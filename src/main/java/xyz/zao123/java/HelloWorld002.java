@@ -10,7 +10,7 @@ package xyz.zao123.java;
  * @author gejt
  * @date 20200711
  */
-public class HelloWorld01 {
+public class HelloWorld002 {
 
     public static void main(String[] args) {
 

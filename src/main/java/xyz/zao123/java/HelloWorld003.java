@@ -8,7 +8,7 @@ package xyz.zao123.java;
  * @author gejt
  * @date 20200711
  */
-public class HelloWorld02 {
+public class HelloWorld003 {
 
     //访问控制修饰符
 
