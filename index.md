@@ -2,7 +2,7 @@
 
 
 ## [Java 基础知识](./Java.html)
-## [Mysql](./Java.html)
+## [Mysql](./Mysql.html)
 ## [Spring](./Java.html)
 ## [Redis](./Java.html)
 ## [RocketMq](./Java.html)
