@@ -1,4 +1,5 @@
 # Java学习笔记
+---
 ## Java 基础知识
 ## Mysql
 ## Spring
@@ -6,5 +7,5 @@
 ## RocketMq
 ## Dubbo
 ## Design Patterns
-## Algorithm1111
+## Algorithm
 
