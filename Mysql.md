@@ -16,15 +16,15 @@ create table user( id int(11) not null, age int(11) not null, primary key(id), k
 
 B+树是左小右大的顺序存储结构，节点只包含id索引列，而叶子节点包含索引列和数据，这种数据和索引在一起存储的索引方式叫做聚簇索引，一张表只能有一个聚簇索引。假设没有定义主键，InnoDB会选择一个唯一的非空索引代替，如果没有的话则会隐式定义一个主键作为聚簇索引。
 
-[!](./img/jucusuoyin.jpg)
+![](./img/jucusuoyin.jpg)
 
 这是主键聚簇索引存储的结构，那么非聚簇索引的结构是什么样子呢？非聚簇索引(二级索引)保存的是主键id值，这一点和myisam保存的是数据地址是不同的。
 
-[!](./img/feijucusuoyin.jpg)
+![](./img/feijucusuoyin.jpg)
 
 最终，我们一张图看看InnoDB和Myisam聚簇和非聚簇索引的区别
 
-[!](./img/suoyinqubie.jpg)
+![](./img/suoyinqubie.jpg)
 
 
 
