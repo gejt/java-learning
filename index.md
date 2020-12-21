@@ -6,7 +6,7 @@
 ## [Spring](./Java.html)
 ## [Redis](./Java.html)
 ## [RocketMq](./Java.html)
-## [Dubbo](./Java.html)
+## [Dubbo](./Dubbo.html)
 ## [Design Patterns](./Java.html)
 ## [Algorithm](./Java.html)
 
