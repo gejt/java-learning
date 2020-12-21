@@ -1,7 +1,6 @@
 # Java学习笔记
 
 * [**Java**](./Java.html)
-
 * [**Mysql**](./Mysql.html)
 * [**Spring**](./Spring.html)
 * [**SpringMvc**](./SpringMvc.html)
