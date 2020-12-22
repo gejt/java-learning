@@ -1,4 +1,4 @@
-# Java面试知识
+# Java知识
 
 * [**Java**](./Java.html)
 * [**Mysql**](./Mysql.html)
