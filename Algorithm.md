@@ -549,7 +549,7 @@ function radixSort(arr, maxDigit) {
 
   　　所以，顺序查找的时间复杂度为O(n)。
 
-- [**2. 二分查找**](http://www.cnblogs.com/maybe2030/p/4715035.html#_label1)
+- **2. 二分查找**
 
   说明：元素必须是有序的，如果是无序的则要先进行排序操作。
 
@@ -559,12 +559,12 @@ function radixSort(arr, maxDigit) {
 
   　　注：折半查找的前提条件是需要**有序表顺序存储**，对于静态查找表，一次排序后不再变化，折半查找能得到不错的效率。但对于需要**频繁执行插入或删除操作**的数据集来说，维护有序的排序会带来不小的工作量，那就不建议使用。——《大话数据结构》
 
-- [**3. 插值查找**](http://www.cnblogs.com/maybe2030/p/4715035.html#_label2)
+- **3. 插值查找**
 
-- [**4. 斐波那契查找**](http://www.cnblogs.com/maybe2030/p/4715035.html#_label3)
+- **4. 斐波那契查找**
 
-- [**5. 树表查找**](http://www.cnblogs.com/maybe2030/p/4715035.html#_label4)
+- **5. 树表查找**
 
-- [**6. 分块查找**](http://www.cnblogs.com/maybe2030/p/4715035.html#_label5)
+- **6. 分块查找**
 
-- [**7. 哈希查找**](http://www.cnblogs.com/maybe2030/p/4715035.html#_label6)
+- **7. 哈希查找**
