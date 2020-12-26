@@ -10,4 +10,4 @@
 ## [**Dubbo**](./Dubbo.html)
 ## [**DesignPatterns**](./DesignPatterns.html)
 ## [**Algorithm**](./Algorithm.html)
-
+## [**Idempotence**](./Idempotence.html)
