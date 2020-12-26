@@ -11,3 +11,4 @@
 ## [**DesignPatterns**](./DesignPatterns.html)
 ## [**Algorithm**](./Algorithm.html)
 ## [**Idempotence**](./Idempotence.html)
+## [**Cache consistency**](./Cache consistency.html)
