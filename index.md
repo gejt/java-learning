@@ -12,3 +12,4 @@
 ## [**Algorithm**](./Algorithm.html)
 ## [**Idempotence**](./Idempotence.html)
 ## [**Cache consistency**](./Cache consistency.html)
+## [**Distributed transaction.md**](./Distributed transaction.html)
