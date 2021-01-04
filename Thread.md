@@ -943,3 +943,28 @@ public class Test {
 ```
 
 ![](img/thread11.png)
+
+##  七、 Java常用的并发类
+
+### **1、常用的并发集合类**
+
+- ConcurrentHashMap：线程安全的HashMap的实现
+- CopyOnWriteArrayList：线程安全且在读操作时无锁的ArrayList
+- CopyOnWriteArraySet：基于CopyOnWriteArrayList，不添加重复元素
+- ArrayBlockingQueue：基于数组、先进先出、线程安全，可实现指定时间的阻塞读写，并且容量可以限制
+- LinkedBlockingQueue：基于链表实现，读写各用一把锁，在高并发**读写操作都多**的情况下，性能优于ArrayBlockingQueue
+
+### **2、原子类**
+
+- AtomicInteger：线程安全的Integer，基于CAS（无阻塞，CPU原语），优于使用同步锁的Integer
+
+### **3、线程池**
+
+- ThreadPoolExecutor：一个高效的支持并发的线程池，可以很容易的讲一个实现了Runnable接口的任务放入线程池执行，但要用好这个线程池，必须合理配置corePoolSize、最大线程数、任务缓冲队列，以及队列满了+线程池满时的回绝策略，一般而言**对于这些参数的配置，需考虑两类需求：高性能和缓冲执行**。
+- Executor：提供了一些方便的创建ThreadPoolExecutor的方法。
+- FutureTask：可用于异步获取执行结果或取消执行任务的场景，基于CAS，避免锁的使用
+
+### **4、锁**
+
+- ReentrantLock：**与synchronized效果一致，但是又更加灵活，支持公平/非公平锁、支持可中断的锁、支持非阻塞的tryLock(可超时)、支持锁条件等**，需要手工释放锁，基于AbstractQueueSynchronizer
+- ReentrantReadWriteLock：与ReentrantLock没有关系，采用两把锁，用于**读多写少**的情形
