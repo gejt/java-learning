@@ -83,11 +83,11 @@ mysql锁分为共享锁和排他锁，也叫做读锁和写锁。
 
 A原子性由undo log日志保证，它记录了需要回滚的日志信息，事务回滚时撤销已经执行成功的sql
 
-C一致性一般由代码层面来保证
+C  一致性是事务追求的最终目标：前面提到的原子性、持久性和隔离性，都是为了保证数据库状态的一致性, 。此外，除了数据库层面的保障，一致性的实现也需要应用层面进行保障。 
 
-I隔离性由MVCC来保证
+I 隔离性由MVCC来保证, 数据的隐藏列包括了该行数据的版本号、删除时间、指向 undo log 的指针等等 
 
-D持久性由内存+redo log来保证，mysql修改数据同时在内存和redo log记录这次操作，事务提交的时候通过redo log刷盘，宕机的时候可以从redo log恢复
+D 持久性由内存+redo log来保证，mysql修改数据同时在内存和redo log记录这次操作，事务提交的时候通过redo log刷盘，宕机的时候可以从redo log恢复
 
 ## MVCC与幻读
 
@@ -108,7 +108,20 @@ MVCC叫做多版本并发控制，实际上就是保存了数据在某个时间�
 ###  **在MVCC并发控制中，读操作可以分成两类** 
 
 1. **快照读 (snapshot read)**：读取的是记录的可见版本 (有可能是历史版本)，不用加锁（共享读锁s锁也不加，所以不会阻塞其他事务的写）
+
+   简单的select操作，属于快照读，不加锁。
+
+   - select * from table where ?;
+
 2. **当前读 (current read)**：读取的是记录的最新版本，并且，当前读返回的记录，都会加上锁，保证其他事务不会再并发修改这条记录
+
+   特殊的读操作，插入/更新/删除操作，属于当前读，需要加锁。
+
+   - select * from table where ? lock in share mode;
+   - select * from table where ? for update;
+   - insert into table values (…);
+   - update table set ? where ?;
+   - delete from table where ?;
 
 ### 相关概念
 
@@ -163,7 +176,7 @@ MVCC在大多数情况下代替了行锁，实现了对读的非阻塞，读不�
 
 1.MVCC手段只适用于Msyql隔离级别中的读已提交（Read committed）和可重复读（Repeatable Read）。
 
-2.Read uncimmitted由于存在脏读，即能读到未提交事务的数据行，所以不适用MVCC.
+2.Read uncommitted由于存在脏读，即能读到未提交事务的数据行，所以不适用MVCC.
 
 原因是MVCC的创建版本和删除版本只要在事务提交后才会产生。
 
@@ -556,7 +569,7 @@ b、select_type：标识select语句的类型。
     它可以是以下几种取值：
         b1、SIMPLE（simple）表示简单查询，其中不包括连接查询和子查询。
         b2、PRIMARY（primary）表示主查询，或者是最外层的查询语句。
-        b3、UNION（union）表示c连接查询的第2个或者后面的查询语句。
+        b3、UNION（union）表示连接查询的第2个或者后面的查询语句。
         b4、DEPENDENT UNION（dependent union）连接查询中的第2个或者后面的select语句。取决于外面的查询。
         b5、UNION RESULT（union result）连接查询的结果。
         b6、SUBQUERY（subquery）子查询的第1个select语句。
