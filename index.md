@@ -1,5 +1,3 @@
-# Java知识
-
 ## [**Java 基础**](./Java.html)
 
 ## [**Java JVM&优化**](./JVM optimized.html)
