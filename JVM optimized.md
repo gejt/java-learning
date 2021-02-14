@@ -568,3 +568,5 @@ jmap -dump:live,format=b,file=myjmapfile.txt 19570
 ## 参考资料
 
 https://www.cnblogs.com/xiaoxian1369/p/5498817.html
+
+https://www.cnblogs.com/jobbible/p/9800222.html
