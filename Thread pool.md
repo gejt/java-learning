@@ -99,6 +99,14 @@ Future.get方法会使取结果的线程进入阻塞状态，知道线程执行�
 
 第二种DisCardPolicy:不执行新任务，也不抛出异常
 
-第三种DisCardOldSetPolicy:将消息队列中的第一个任务替换为当前新进来的任务执行
+第三种DisCardOldestPolicy:将消息队列中的第一个任务替换为当前新进来的任务执行
 
 第四种CallerRunsPolicy:直接调用execute来执行当前任务
+
+## **10、线程池状态**
+
+- RUNNING ：能接受新提交的任务，并且也能处理阻塞队列中的任务。
+- SHUTDOWN：关闭状态，不再接受新提交的任务，但却可以继续处理阻塞队列中已保存的任务。在线程池处于 RUNNING 状态时，调用 shutdown() 方法会使线程池进入到该状态。（finalize() 方法在执行过程中也会调用 shutdown() 方法进入该状态）。
+- STOP：不能接受新任务，也不处理队列中的任务，会中断正在处理任务的线程。在线程池处于 RUNNING 或 SHUTDOWN 状态时，调用 shutdownNow() 方法会使线程池进入到该状态。
+- TIDYING：如果所有的任务都已终止了，workerCount (有效线程数) 为0，线程池进入该状态后会调用 terminated() 方法进入 TERMINATED 状态。
+- TERMINATED：在 terminated() 方法执行完后进入该状态，默认 terminated() 方法中什么也没有做。

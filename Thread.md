@@ -74,13 +74,109 @@
 
  3、线程A这次又需要修改X的值，获取时一级缓存命中，并且X=l这里问题就出现了，明明线程B已经把X的值修改为2，为何线程A获取的还是l呢？这就是共享变量的内存不可见问题，也就是线程B写入的值对线程A不可见。 
 
-###  synchronized 的内存语义： 
+### synchronized 关键字
+
+#### synchronized 的内存语义
 
  这个内存语义就可以解决共享变量内存可见性问题。进入synchronized块的内存语义是把在synchronized块内使用到的变量从线程的工作内存中清除，这样在synchronized块内使用到该变量时就不会从线程的工作内存中获取，而是直接从主内存中获取。退出synchronized块的内存语义是把在synchronized块内对共享变量的修改刷新到主内存。会造成上下文切换的开销，独占锁，降低并发性 
 
-###  Volatile的理解： 
+#### synchronized 特性
+
+##### synchronized锁对象
+
+1. 对象锁 锁对象 synchronized(this) ; public synchronized void test(){}
+2. 类锁 锁class对象 synchronized(xxx.class); public synchronized static void test(){}
+3. 私有锁 锁lock对象 synchronized(lock)
+
+> 注意
+
+##### synchronized 可重入概念
+
+##### synchronized 异常会释放锁
+
+#### synchronized 底层实现
+
+JDK早期，重量级，后来改进锁升级。
+
+###### 锁升级
+
+例如：sync(object)
+
+- markword 记录这个线程ID 偏向锁
+- 如果有线程征用 升级为 自旋锁（用户态，CPU自旋）
+- 10后还得不到锁 升级为 重量级锁 - OS 进入等待队列
+
+#### 锁的选择
+
+- 执行时间短，线程数少 用自旋锁
+- 执行时间长，线程数多 重量级锁
+
+#### synchronized 优化
+
+##### 锁细化
+
+##### 锁粗化
+
+###  volatile 关键字
 
  该关键字可以确保对一个变量的更新对其他线程马上可见。当一个变量被声明为volatile时，线程在写入变量时不会把值缓存在寄存器或者其他地方，而是会把值刷新回主内存。当其他线程读取该共享变量时－，会从主内存重新获取最新值，而不是使用当前线程的工作内存中的值。volatile的内存语义和synchronized有相似之处，具体来说就是，当线程写入了volatile变量值时就等价于线程退出synchronized同步块（把写入工作内存的变量值同步到主内存），读取volatile变量值时就相当于进入同步块（先清空本地内存变量值，再从主内存获取最新值）。不能保证原子性 
+
+#### 保证线程可见性
+
+- MESI 缓存一致性协议
+
+#### 禁止指令重排序（CPU）
+
+- 例如 DCL 单例
+- Double Check Lock
+
+### CAS 无锁优化（自旋）
+
+#### Compare And Swap
+
+```
+cas(Expected,NewValue) 
+if v==Expected
+v=NewValue
+otherwise try again or fail
+
+# CPU源语支持
+```
+
+#### ABA问题
+
+```
+-加version
+-A 1.0
+-B 2.0
+-A 3.0
+-cas(version)
+-如果基础类型无所谓，如果引用类型要注意
+```
+
+#### Unsafe直接操作jvm内存
+
+#### Atomic开头的类(例如AtomicInteger)底层都是用到了cas
+
+#### CAS 新类型锁
+
+###### ReentrantLock
+
+###### CountDownLatch
+
+###### CyclicBarrier
+
+###### Phaser
+
+###### ReadWriteLock
+
+###### Semaphore
+
+###### Exchanger
+
+###### LockSupport
+
+###### ThreadLocal
 
 ## 三、创建线程
 
@@ -961,10 +1057,57 @@ public class Test {
 ### **3、线程池**
 
 - ThreadPoolExecutor：一个高效的支持并发的线程池，可以很容易的讲一个实现了Runnable接口的任务放入线程池执行，但要用好这个线程池，必须合理配置corePoolSize、最大线程数、任务缓冲队列，以及队列满了+线程池满时的回绝策略，一般而言**对于这些参数的配置，需考虑两类需求：高性能和缓冲执行**。
-- Executor：提供了一些方便的创建ThreadPoolExecutor的方法。
+- Executors：提供了一些方便的创建ThreadPoolExecutor的方法。(不推荐使用)
 - FutureTask：可用于异步获取执行结果或取消执行任务的场景，基于CAS，避免锁的使用
 
 ### **4、锁**
 
 - ReentrantLock：**与synchronized效果一致，但是又更加灵活，支持公平/非公平锁、支持可中断的锁、支持非阻塞的tryLock(可超时)、支持锁条件等**，需要手工释放锁，基于AbstractQueueSynchronizer
 - ReentrantReadWriteLock：与ReentrantLock没有关系，采用两把锁，用于**读多写少**的情形
+
+## 八、四大引用之强软弱虚
+
+### 强引用
+
+- Object o = new Object();
+- 有指向，不回收
+
+### 软引用
+
+```
+SoftReference<byte[]> m = new SoftReference<>(new byte[1024*1024]);
+```
+
+- 内存不够时垃圾回收回收掉
+- 可用作缓存
+
+### 弱引用
+
+- 只要垃圾回收就回收掉
+- 一般用在容器（阅读WeakHashMap源码）
+
+```
+WeakReference<M> m = new SoftReference<>(new M());
+
+# Entry extends WeakReference  ,不然会有内存泄漏
+# 写remove  不然会有内存泄漏
+ThreaLocal<M> tl = new ThreadLocal();
+tl.set(new M());
+tl.remove();
+```
+
+### 虚引用
+
+- 管理堆外内存
+- 基本没用
+- 写JVM人用的,管理堆外内存
+- 回收虚引用时，到QUEUE中通知
+- 只要有垃圾回收就回收掉
+
+```
+RefereceQueue<M> QUEUE = new ReferenceQueue<>();
+
+PhantomReference<M> phantomReference = new PhantomReference(new M(),QUEUE);
+```
+
+> 直接内存->堆外内存 操作系统用的 Netty
