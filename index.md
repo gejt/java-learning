@@ -1,13 +1,13 @@
 # Java知识
 
-## [**Java**](./Java.html)
+## [**Java 基础**](./Java.html)
 
-## [**JVM**](./JVM optimized.html)
+## [**Java JVM&优化**](./JVM optimized.html)
 
-[**集合框架**](./Java collection.html)
+## [**Java 集合框架**](./Java collection.html)
 
-## [**多线程与并发**](./Thread.html)
-## [**线程池**](./Thread pool.html)
+## [**Java 多线程与并发**](./Thread.html)
+## [**Java 线程池**](./Thread pool.html)
 ## [**设计模式**](./DesignPatterns.html)
 ## [**算法**](./Algorithm.html)
 ## [**幂等**](./Idempotence.html)
