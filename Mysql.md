@@ -598,7 +598,7 @@ h、ref:表示使用那个列或者常数或者索引一起来查询记录。
 i、rows:显示mysql在表中进行查询必须检查的行数。
 j、Extra:该列mysql在处理查询时的详细信息。
 
-##  key和index的区别** 
+##  key和index的区别
 
 1. key 是数据库的物理结构，它包含两层意义和作用，一是约束（偏重于约束和规范数据库的结构完整性），二是索引（辅助查询用的）。包括primary key, unique key, foreign key 等
 2. index是数据库的物理结构，它只是辅助查询的，它创建时会在另外的表空间（mysql中的innodb表空间）以一个类似目录的结构存储。索引要分类的话，分为前缀索引、全文本索引等；
@@ -711,3 +711,700 @@ MySQL大多数核心服务均在中间这一层，包括查询解析、分析、
 ## **MySQL查询过程**
 
 ![](img/mysqlquery.jpg)
+
+## Mysql优化
+
+### 存储引擎
+
+![](img/mysql.png)
+
+### 表结构优化
+
+#### 更小的通常更好
+
+应该尽量使用可以正确存储数据的最小数据类型，更小的数据类型通常更快，因为它们占用更少的磁盘、内存和CPU缓存，并且处理时需要的CPU周期更少，但是要确保没有低估需要存储的值的范围，如果无法确认哪个数据类型，就选择你认为不会超过范围的最小类型
+
+案例：
+
+设计两张表，设计不同的数据类型，查看表的容量
+
+#### 简单就好
+
+简单数据类型的操作通常需要更少的CPU周期，例如，
+
+1、整型比字符操作代价更低，因为字符集和校对规则是字符比较比整型比较更复杂，
+
+2、使用mysql自建类型而不是字符串来存储日期和时间
+
+3、用整型存储IP地址
+
+案例：
+
+创建两张相同的表，改变日期的数据类型，查看SQL语句执行的速度
+
+#### 尽量避免null
+
+如果查询中包含可为NULL的列，对mysql来说很难优化，因为可为null的列使得索引、索引统计和值比较都更加复杂，坦白来说，通常情况下null的列改为not null带来的性能提升比较小，所有没有必要将所有的表的schema进行修改，但是应该尽量避免设计成可为null的列
+
+#### 实际细则
+
+##### 整数类型
+
+可以使用的几种整数类型：TINYINT，SMALLINT，MEDIUMINT，INT，BIGINT分别使用8，16，24，32，64位存储空间。
+
+尽量使用满足需求的最小数据类型
+
+##### 字符和字符串类型
+
+###### varchar根据实际内容长度保存数据
+
+1、使用最小的符合需求的长度。
+
+2、varchar(n) n小于等于255使用额外一个字节保存长度，n>255使用额外两个字节保存长度。
+
+3、varchar(5)与varchar(255)保存同样的内容，硬盘存储空间相同，但内存空间占用不同，是指定的大小 。
+
+4、varchar在mysql5.6之前变更长度，或者从255一下变更到255以上时时，都会导致锁表。
+
+应用场景
+
+1、存储长度波动较大的数据，如：文章，有的会很短有的会很长
+
+2、字符串很少更新的场景，每次更新后都会重算并使用额外存储空间保存长度
+
+3、适合保存多字节字符，如：汉字，特殊字符等
+
+###### char固定长度的字符串
+
+1、最大长度：255
+
+2、会自动删除末尾的空格
+
+3、检索效率、写效率 会比varchar高，以空间换时间
+
+应用场景
+
+1、存储长度波动不大的数据，如：md5摘要
+
+2、存储短字符串、经常更新的字符串
+
+##### BLOB和TEXT类型
+
+MySQL 把每个 BLOB 和 TEXT 值当作一个独立的对象处理。
+
+两者都是为了存储很大数据而设计的字符串类型，分别采用二进制和字符方式存储。
+
+##### datetime和timestamp
+
+###### datetime
+
+占用8个字节
+
+与时区无关，数据库底层时区配置，对datetime无效
+
+可保存到毫秒
+
+可保存时间范围大
+
+不要使用字符串存储日期类型，占用空间大，损失日期类型函数的便捷性
+
+###### timestamp
+
+占用4个字节
+
+时间范围：1970-01-01到2038-01-19
+
+精确到秒
+
+采用整形存储
+
+依赖数据库设置的时区
+
+自动更新timestamp列的值
+
+###### date
+
+占用的字节数比使用字符串、datetime、int存储要少，使用date类型只需要3个字节
+
+使用date类型还可以利用日期时间函数进行日期之间的计算
+
+date类型用于保存1000-01-01到9999-12-31之间的日期
+
+##### 使用枚举代替字符串类型
+
+有时可以使用枚举类代替常用的字符串类型，mysql存储枚举类型会非常紧凑，会根据列表值的数据压缩到一个或两个字节中，mysql在内部会将每个值在列表中的位置保存为整数，并且在表的.frm文件中保存“数字-字符串”映射关系的查找表
+
+ create table enum_test(e enum('fish','apple','dog') not null);
+
+ insert into enum_test(e) values('fish'),('dog'),('apple');
+
+ select e+0 from enum_test;
+
+###### 特殊类型数据
+
+人们经常使用varchar(15)来存储ip地址，然而，它的本质是32位无符号整数不是字符串，可以使用INET_ATON()和INET_NTOA函数在这两种表示方法之间转换
+
+案例：
+
+select inet_aton('1.1.1.1')
+
+select inet_ntoa(16843009)
+
+#### 合理使用范式和反范式
+
+##### 范式
+
+###### 优点
+
+范式化的更新通常比反范式要快
+
+当数据较好的范式化后，很少或者没有重复的数据
+
+范式化的数据比较小，可以放在内存中，操作比较快
+
+###### 缺点
+
+通常需要进行关联
+
+##### 反范式
+
+###### 优点
+
+所有的数据都在同一张表中，可以避免关联
+
+可以设计有效的索引；
+
+###### 缺点
+
+表格内的冗余较多，删除数据时候会造成表有些有用的信息丢失
+
+
+
+
+
+在企业中很好能做到严格意义上的范式或者反范式，一般需要混合使用
+
+在一个网站实例中，这个网站，允许用户发送消息，并且一些用户是付费用户。现在想查看付费用户最近的10条信息。  在user表和message表中都存储用户类型(account_type)而不用完全的反范式化。这避免了完全反范式化的插入和删除问题，因为即使没有消息的时候也绝不会丢失用户的信息。这样也不会把user_message表搞得太大，有利于高效地获取数据。
+
+另一个从父表冗余一些数据到子表的理由是排序的需要。
+
+缓存衍生值也是有用的。如果需要显示每个用户发了多少消息（类似论坛的），可以每次执行一个昂贵的自查询来计算并显示它；也可以在user表中建一个num_messages列，每当用户发新消息时更新这个值。
+
+
+
+范式设计
+
+![](img/mysql1.png)
+
+反范式设计
+
+![](img/mysql2.png)
+
+#### 主键的选择
+
+##### 代理主键
+
+与业务无关的，无意义的数字序列
+
+##### 自然主键
+
+事物属性中的自然唯一标识
+
+
+
+##### 推荐使用代理主键
+
+它们不与业务耦合，因此更容易维护
+
+一个大多数表，最好是全部表，通用的键策略能够减少需要编写的源码数量，减少系统的总体拥有成本
+
+
+
+#### 字符集的选择
+
+1.纯拉丁字符能表示的内容，没必要选择 latin1 之外的其他字符编码，因为这会节省大量的存储空间。
+
+2.如果我们可以确定不需要存放多种语言，就没必要非得使用UTF8或者其他UNICODE字符类型，这回造成大量的存储空间浪费。
+
+3.MySQL的数据类型可以精确到字段，所以当我们需要大型数据库中存放多字节数据的时候，可以通过对不同表不同字段使用不同的数据类型来较大程度减小数据存储量，进而降低 IO 操作次数并提高缓存命中率。
+
+#### 适当的数据冗余
+
+1.被频繁引用且只能通过 Join 2张(或者更多)大表的方式才能得到的独立小字段。
+
+2.这样的场景由于每次Join仅仅只是为了取得某个小字段的值，Join到的记录又大，会造成大量不必要的 IO，完全可以通过空间换取时间的方式来优化。不过，冗余的同时需要确保数据的一致性不会遭到破坏，确保更新的同时冗余字段也被更新。
+
+#### 适当拆分
+
+当我们的表中存在类似于 TEXT 或者是很大的 VARCHAR类型的大字段的时候，如果我们大部分访问这张表的时候都不需要这个字段，我们就该义无反顾的将其拆分到另外的独立表中，以减少常用数据所占用的存储空间。这样做的一个明显好处就是每个数据块中可以存储的数据条数可以大大增加，既减少物理 IO 次数，也能大大提高内存中的缓存命中率。
+
+### 查询优化
+
+#### mysql执行计划
+
+​       在企业的应用场景中，为了知道优化SQL语句的执行，需要查看SQL语句的具体执行过程，以加快SQL语句的执行效率。
+
+​       可以使用explain+SQL语句来模拟优化器执行SQL查询语句，从而知道mysql是如何处理sql语句的。
+
+​	   官网地址： https://dev.mysql.com/doc/refman/5.5/en/explain-output.html 
+
+1、执行计划中包含的信息
+
+|    Column     |                    Meaning                     |
+| :-----------: | :--------------------------------------------: |
+|      id       |            The `SELECT` identifier             |
+|  select_type  |               The `SELECT` type                |
+|     table     |          The table for the output row          |
+|  partitions   |            The matching partitions             |
+|     type      |                 The join type                  |
+| possible_keys |         The possible indexes to choose         |
+|      key      |           The index actually chosen            |
+|    key_len    |          The length of the chosen key          |
+|      ref      |       The columns compared to the index        |
+|     rows      |        Estimate of rows to be examined         |
+|   filtered    | Percentage of rows filtered by table condition |
+|     extra     |             Additional information             |
+
+**id**
+
+select查询的序列号，包含一组数字，表示查询中执行select子句或者操作表的顺序
+
+id号分为三种情况：
+
+​		1、如果id相同，那么执行顺序从上到下
+
+```sql
+explain select * from emp e join dept d on e.deptno = d.deptno join salgrade sg on e.sal between sg.losal and sg.hisal;
+```
+
+​		2、如果id不同，如果是子查询，id的序号会递增，id值越大优先级越高，越先被执行
+
+```sql
+explain select * from emp e where e.deptno in (select d.deptno from dept d where d.dname = 'SALES');
+```
+
+​		3、id相同和不同的，同时存在：相同的可以认为是一组，从上往下顺序执行，在所有组中，id值越大，优先级越高，越先执行
+
+```sql
+explain select * from emp e join dept d on e.deptno = d.deptno join salgrade sg on e.sal between sg.losal and sg.hisal where e.deptno in (select d.deptno from dept d where d.dname = 'SALES');
+```
+
+**select_type**
+
+主要用来分辨查询的类型，是普通查询还是联合查询还是子查询
+
+| `select_type` Value  |                           Meaning                            |
+| :------------------: | :----------------------------------------------------------: |
+|        SIMPLE        |        Simple SELECT (not using UNION or subqueries)         |
+|       PRIMARY        |                       Outermost SELECT                       |
+|        UNION         |         Second or later SELECT statement in a UNION          |
+|   DEPENDENT UNION    | Second or later SELECT statement in a UNION, dependent on outer query |
+|     UNION RESULT     |                      Result of a UNION.                      |
+|       SUBQUERY       |                   First SELECT in subquery                   |
+|  DEPENDENT SUBQUERY  |      First SELECT in subquery, dependent on outer query      |
+|       DERIVED        |                        Derived table                         |
+| UNCACHEABLE SUBQUERY | A subquery for which the result cannot be cached and must be re-evaluated for each row of the outer query |
+|  UNCACHEABLE UNION   | The second or later select in a UNION that belongs to an uncacheable subquery (see UNCACHEABLE SUBQUERY) |
+
+```sql
+--sample:简单的查询，不包含子查询和union
+explain select * from emp;
+
+--primary:查询中若包含任何复杂的子查询，最外层查询则被标记为Primary
+explain select staname,ename supname from (select ename staname,mgr from emp) t join emp on t.mgr=emp.empno ;
+
+--union:若第二个select出现在union之后，则被标记为union
+explain select * from emp where deptno = 10 union select * from emp where sal >2000;
+
+--dependent union:跟union类似，此处的depentent表示union或union all联合而成的结果会受外部表影响
+explain select * from emp e where e.empno  in ( select empno from emp where deptno = 10 union select empno from emp where sal >2000)
+
+--union result:从union表获取结果的select
+explain select * from emp where deptno = 10 union select * from emp where sal >2000;
+
+--subquery:在select或者where列表中包含子查询
+explain select * from emp where sal > (select avg(sal) from emp) ;
+
+--dependent subquery:subquery的子查询要受到外部表查询的影响
+explain select * from emp e where e.deptno in (select distinct deptno from dept);
+
+--DERIVED: from子句中出现的子查询，也叫做派生类，
+explain select staname,ename supname from (select ename staname,mgr from emp) t join emp on t.mgr=emp.empno ;
+
+--UNCACHEABLE SUBQUERY：表示使用子查询的结果不能被缓存
+ explain select * from emp where empno = (select empno from emp where deptno=@@sort_buffer_size);
+ 
+--uncacheable union:表示union的查询结果不能被缓存：sql语句未验证
+```
+
+**table**
+
+对应行正在访问哪一个表，表名或者别名，可能是临时表或者union合并结果集
+		1、如果是具体的表名，则表明从实际的物理表中获取数据，当然也可以是表的别名
+
+​		2、表名是derivedN的形式，表示使用了id为N的查询产生的衍生表
+
+​		3、当有union result的时候，表名是union n1,n2等的形式，n1,n2表示参与union的id
+
+**type**
+
+type显示的是访问类型，访问类型表示我是以何种方式去访问我们的数据，最容易想的是全表扫描，直接暴力的遍历一张表去寻找需要的数据，效率非常低下，访问的类型有很多，效率从最好到最坏依次是：
+
+system > const > eq_ref > ref > fulltext > ref_or_null > index_merge > unique_subquery > index_subquery > range > index > ALL 
+
+一般情况下，得保证查询至少达到range级别，最好能达到ref
+
+```sql
+--all:全表扫描，一般情况下出现这样的sql语句而且数据量比较大的话那么就需要进行优化。
+explain select * from emp;
+
+--index：全索引扫描这个比all的效率要好，主要有两种情况，一种是当前的查询时覆盖索引，即我们需要的数据在索引中就可以索取，或者是使用了索引进行排序，这样就避免数据的重排序
+explain  select empno from emp;
+
+--range：表示利用索引查询的时候限制了范围，在指定范围内进行查询，这样避免了index的全索引扫描，适用的操作符： =, <>, >, >=, <, <=, IS NULL, BETWEEN, LIKE, or IN() 
+explain select * from emp where empno between 7000 and 7500;
+
+--index_subquery：利用索引来关联子查询，不再扫描全表
+explain select * from emp where emp.job in (select job from t_job);
+
+--unique_subquery:该连接类型类似与index_subquery,使用的是唯一索引
+ explain select * from emp e where e.deptno in (select distinct deptno from dept);
+ 
+--index_merge：在查询过程中需要多个索引组合使用，没有模拟出来
+
+--ref_or_null：对于某个字段即需要关联条件，也需要null值的情况下，查询优化器会选择这种访问方式
+explain select * from emp e where  e.mgr is null or e.mgr=7369;
+
+--ref：使用了非唯一性索引进行数据的查找
+ create index idx_3 on emp(deptno);
+ explain select * from emp e,dept d where e.deptno =d.deptno;
+
+--eq_ref ：使用唯一性索引进行数据查找
+explain select * from emp,emp2 where emp.empno = emp2.empno;
+
+--const：这个表至多有一个匹配行，
+explain select * from emp where empno = 7369;
+ 
+--system：表只有一行记录（等于系统表），这是const类型的特例，平时不会出现
+```
+
+ **possible_keys** 
+
+​        显示可能应用在这张表中的索引，一个或多个，查询涉及到的字段上若存在索引，则该索引将被列出，但不一定被查询实际使用
+
+```sql
+explain select * from emp,dept where emp.deptno = dept.deptno and emp.deptno = 10;
+```
+
+**key**
+
+​		实际使用的索引，如果为null，则没有使用索引，查询中若使用了覆盖索引，则该索引和查询的select字段重叠。
+
+```sql
+explain select * from emp,dept where emp.deptno = dept.deptno and emp.deptno = 10;
+```
+
+**key_len**
+
+表示索引中使用的字节数，可以通过key_len计算查询中使用的索引长度，在不损失精度的情况下长度越短越好。
+
+```sql
+explain select * from emp,dept where emp.deptno = dept.deptno and emp.deptno = 10;
+```
+
+**ref**
+
+显示索引的哪一列被使用了，如果可能的话，是一个常数
+
+```sql
+explain select * from emp,dept where emp.deptno = dept.deptno and emp.deptno = 10;
+```
+
+**rows**
+
+根据表的统计信息及索引使用情况，大致估算出找出所需记录需要读取的行数，此参数很重要，直接反应的sql找了多少数据，在完成目的的情况下越少越好
+
+```sql
+explain select * from emp;
+```
+
+**extra**
+
+包含额外的信息。
+
+```sql
+--using filesort:说明mysql无法利用索引进行排序，只能利用排序算法进行排序，会消耗额外的位置
+explain select * from emp order by sal;
+
+--using temporary:建立临时表来保存中间结果，查询完成之后把临时表删除
+explain select ename,count(*) from emp where deptno = 10 group by ename;
+
+--using index:这个表示当前的查询时覆盖索引的，直接从索引中读取数据，而不用访问数据表。如果同时出现using where 表名索引被用来执行索引键值的查找，如果没有，表面索引被用来读取数据，而不是真的查找
+explain select deptno,count(*) from emp group by deptno limit 10;
+
+--using where:使用where进行条件过滤
+explain select * from t_user where id = 1;
+
+--using join buffer:使用连接缓存，情况没有模拟出来
+
+--impossible where：where语句的结果总是false
+explain select * from emp where empno = 7469;
+```
+
+
+
+#### 索引优化
+
+##### 索引分类
+
+- 主键索引
+
+- 唯一索引
+
+- 普通索引
+
+- 全文索引
+
+- 组合索引
+
+- 哈希索引
+
+  基于哈希表的实现，只有精确匹配索引所有列的查询才有效,在mysql中，只有memory的存储引擎显式支持哈希索引,哈希索引自身只需存储对应的hash值，所以索引的结构十分紧凑，这让哈希索引查找的速度非常快。
+
+##### 技术名词
+
+- 回表
+- 覆盖索引
+- 最左匹配
+- 索引下推
+
+##### 索引采用的数据结构
+
+- 哈希表
+- B+树
+
+##### 索引匹配方式
+
+- 全值匹配-全值匹配指的是和索引中的所有列进行匹配
+
+  explain select * from staffs where name = 'July' and age = '23' and pos = 'dev';
+
+- 匹配最左前缀-只匹配前面的几列
+
+  explain select * from staffs where name = 'July' and age = '23';
+
+  explain select * from staffs where name = 'July';
+
+- 匹配列前缀-可以匹配某一列的值的开头部分
+
+  explain select * from staffs where name like 'J%';
+
+  explain select * from staffs where name like '%y';
+
+- 匹配范围值-可以查找某一个范围的数据
+
+  explain select * from staffs where name > 'Mary';
+
+- 精确匹配某一列并范围匹配另外一列-可以查询第一列的全部和第二列的部分
+
+  explain select * from staffs where name = 'July' and age > 25;
+
+- 只访问索引的查询-查询的时候只需要访问索引，不需要访问数据行，本质上就是覆盖索引
+
+  explain select name,age,pos from staffs where name = 'July' and age = 25 and pos = 'dev';
+
+##### 优化细节
+
+- 当使用索引列进行查询的时候尽量不要使用表达式，把计算放到业务层而不是数据库层
+
+  select actor_id from actor where actor_id=4;
+
+  select actor_id from actor where actor_id+1=5;
+
+- 尽量使用主键查询，而不是其他索引，因此主键查询不会触发回表查询
+
+- 使用前缀索引
+
+- 使用索引扫描来排序
+
+- union all,in,or都能够使用索引，但是推荐使用in
+
+  explain select * from actor where actor_id = 1 union all select * from actor where actor_id = 2;
+
+  explain select * from actor where actor_id in (1,2);
+
+   explain select * from actor where actor_id = 1 or actor_id =2;
+
+- 范围列可以用到索引
+
+  范围条件是：<、>
+
+  范围列可以用到索引，但是范围列后面的列无法用到索引，索引最多用于一个范围列
+
+- 强制类型转换会全表扫描
+
+  explain select * from user where phone=13800001234;//不会触发索引
+
+  explain select * from user where phone='13800001234';//触发索引
+
+- 更新十分频繁，数据区分度不高的字段上不宜建立索引
+
+  更新会变更B+树，更新频繁的字段建议索引会大大降低数据库性能
+
+  类似于性别这类区分不大的属性，建立索引是没有意义的，不能有效的过滤数据
+
+  一般区分度在80%以上的时候就可以建立索引，区分度可以使用 count(distinct(列名))/count(*) 来计算
+
+- 创建索引的列，不允许为null，可能会得到不符合预期的结果
+
+- 当需要进行表连接的时候，最好不要超过三张表，因为需要join的字段，数据类型必须一致
+
+- 能使用limit的时候尽量使用limit
+
+- 单表索引建议控制在5个以内
+
+- 单索引字段数不允许超过5个（组合索引）
+
+- 创建索引的时候应该避免以下错误概念
+
+  1. 索引越多
+  2. 过早优化，在不了解系统的情况下进行优化
+
+#### 查询语句优化
+
+##### 使用子查询优化
+
+这种方式先定位偏移位置的 id，然后往后查询，这种方式适用于 id 递增的情况。
+
+```sql
+select * from orders_history where type=8 limit 100000,1;
+
+select id from orders_history where type=8 limit 100000,1;
+
+select * from orders_history where type=8 and 
+id>=(select id from orders_history where type=8 limit 100000,1) 
+limit 100;
+```
+
+##### 使用 id 限定优化
+
+这种方式假设数据表的id是连续递增的，则我们根据查询的页数和查询的记录数可以算出查询的id的范围，可以使用 id between and 来查询：
+
+```sql
+select * from orders_history where type=2 
+and id between 1000000 and 1000100 limit 100;
+```
+
+这种查询方式能够极大地优化查询速度，基本能够在几十毫秒之内完成。限制是只能使用于明确知道id的情况，不过一般建立表的时候，都会添加基本的id字段，这为分页查询带来很多便利。
+
+还可以有另外一种写法：
+
+```sql
+select * from orders_history where id >= 1000001 limit 100;
+```
+
+
+
+当然还可以使用 in 的方式来进行查询，这种方式经常用在多表关联的时候进行查询，使用其他表查询的id集合，来进行查询：
+
+```sql
+select * from orders_history where id in
+(select order_id from trade_2 where goods = 'pen')
+limit 100;
+```
+
+这种 in 查询的方式要注意：某些 mysql 版本不支持在 in 子句中使用 limit。
+
+##### 使用临时表优化
+
+对于使用 id 限定优化中的问题，需要 id 是连续递增的，但是在一些场景下，比如使用历史表的时候，或者出现过数据缺失问题时，可以考虑使用临时存储的表来记录分页的id，使用分页的id来进行 in 查询。这样能够极大的提高传统的分页查询速度，尤其是数据量上千万的时候。
+
+##### 关于数据表的id说明
+
+一般情况下，在数据库中建立表的时候，强制为每一张表添加 id 递增字段，这样方便查询。
+
+如果像是订单库等数据量非常庞大，一般会进行分库分表。这个时候不建议使用数据库的 id 作为唯一标识，而应该使用分布式的高并发唯一 id 生成器来生成，并在数据表中使用另外的字段来存储这个唯一标识。
+
+使用先使用范围查询定位 id （或者索引），然后再使用索引进行定位数据，能够提高好几倍查询速度。即先 select id，然后再 select *；
+
+### 分区优化
+
+对于用户而言，分区表是一个独立的逻辑表，但是底层是由多个物理子表组成。分区表对于用户而言是一个完全封装底层实现的黑盒子，对用户而言是透明的，从文件系统中可以看到多个使用#分隔命名的表文件。
+
+mysql在创建表时使用partition by子句定义每个分区存放的数据，在执行查询的时候，优化器会根据分区定义过滤那些没有我们需要数据的分区，这样查询就无须扫描所有分区。
+
+分区的主要目的是将数据安好一个较粗的力度分在不同的表中，这样可以将相关的数据存放在一起。
+
+#### 分区表的原理
+
+分区表由多个相关的底层表实现，这个底层表也是由句柄对象标识，我们可以直接访问各个分区。存储引擎管理分区的各个底层表和管理普通表一样（所有的底层表都必须使用相同的存储引擎），分区表的索引知识在各个底层表上各自加上一个完全相同的索引。从存储引擎的角度来看，底层表和普通表没有任何不同，存储引擎也无须知道这是一个普通表还是一个分区表的一部分。
+
+​		分区表的操作按照以下的操作逻辑进行：
+
+​		**select查询**
+
+​		当查询一个分区表的时候，分区层先打开并锁住所有的底层表，优化器先判断是否可以过滤部分分区，然后再调用对应的存储引擎接口访问各个分区的数据
+
+​		**insert操作**
+
+​		当写入一条记录的时候，分区层先打开并锁住所有的底层表，然后确定哪个分区接受这条记录，再将记录写入对应底层表
+
+​		**delete操作**
+
+​		当删除一条记录时，分区层先打开并锁住所有的底层表，然后确定数据对应的分区，最后对相应底层表进行删除操作
+
+​		**update操作**
+
+​		当更新一条记录时，分区层先打开并锁住所有的底层表，mysql先确定需要更新的记录再哪个分区，然后取出数据并更新，再判断更新后的数据应该再哪个分区，最后对底层表进行写入操作，并对源数据所在的底层表进行删除操作
+
+​		有些操作时支持过滤的，例如，当删除一条记录时，MySQL需要先找到这条记录，如果where条件恰好和分区表达式匹配，就可以将所有不包含这条记录的分区都过滤掉，这对update同样有效。如果是insert操作，则本身就是只命中一个分区，其他分区都会被过滤掉。mysql先确定这条记录属于哪个分区，再将记录写入对应得曾分区表，无须对任何其他分区进行操作
+
+​		虽然每个操作都会“先打开并锁住所有的底层表”，但这并不是说分区表在处理过程中是锁住全表的，如果存储引擎能够自己实现行级锁，例如innodb，则会在分区层释放对应表锁。
+
+#### 分区表的类型
+
+- 范围分区
+
+  根据列值在给定范围内将行分配给分区
+
+- 列表分区
+
+  类似于按range分区，区别在于list分区是基于列值匹配一个离散值集合中的某个值来进行选择
+
+- 列分区
+
+  mysql从5.5开始支持column分区，可以认为i是range和list的升级版，在5.5之后，可以使用column分区替代range和list，但是column分区只接受普通列不接受表达式
+
+- hash分区
+
+  基于用户定义的表达式的返回值来进行选择的分区，该表达式使用将要插入到表中的这些行的列值进行计算。这个函数可以包含myql中有效的、产生非负整数值的任何表达式
+
+- key分区
+
+  类似于hash分区，区别在于key分区只支持一列或多列，且mysql服务器提供其自身的哈希函数，必须有一列或多列包含整数值
+
+- 子分区
+
+  在分区的基础之上，再进行分区后存储
+
+#### 如何使用分区表
+
+如果需要从非常大的表中查询出某一段时间的记录，而这张表中包含很多年的历史数据，数据是按照时间排序的，此时应该如何查询数据呢？
+
+因为数据量巨大，肯定不能在每次查询的时候都扫描全表。考虑到索引在空间和维护上的消耗，也不希望使用索引，即使使用索引，会发现会产生大量的碎片，还会产生大量的随机IO，但是当数据量超大的时候，索引也就无法起作用了，此时可以考虑使用分区来进行解决
+
+1. 全量扫描数据，不要任何索引
+
+   使用简单的分区方式存放表，不要任何索引，根据分区规则大致定位需要的数据为止，通过使用where条件将需要的数据限制在少数分区中，这种策略适用于以正常的方式访问大量数据
+
+2. 索引数据，并分离热点
+
+   如果数据有明显的热点，而且除了这部分数据，其他数据很少被访问到，那么可以将这部分热点数据单独放在一个分区中，让这个分区的数据能够有机会都缓存在内存中，这样查询就可以只访问一个很小的分区表，能够使用索引，也能够有效的使用缓存
+
+#### 在使用分区表的时候需要注意的问题
+
+- null值会使分区过滤无效
+- 分区列和索引列不匹配，会导致查询无法进行分区过滤
+- 选择分区的成本可能很高
+- 打开并锁住所有底层表的成本可能很高
+- 维护分区的成本可能很高
