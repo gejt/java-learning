@@ -22,7 +22,7 @@ JMS即Java消息服务（Java Message Service的简称），是Java EE 的标准
 
 我们知道，JMS只是定义了一组有关消息传送的规范和标准，并没有真正实现，也就说JMS只是定义了一组接口而已；就像JDBC抽象了关系数据库访问、JPA抽象了对象与关系数据库映射、JNDI抽象了命名目录服务访问一样，JMS具体的实现由不同的消息中间件厂商提供，比如Apache ActiveMQ就是JMS规范的具体实现，Apache ActiveMQ才是一个消息服务系统，而JMS不是。
 
-![img](clip_image002.png)
+![](img/clip_image002.png)
 
 ## **二.ActiveMQ的使用**
 
@@ -38,7 +38,7 @@ JMS即Java消息服务（Java Message Service的简称），是Java EE 的标准
 
 5.web管理控制台admin URL地址：http : // localhost : 8161 默认登录账号 admin 密码 admin，注意：Linux防火前要关闭 ;通过这个地址可以即时访问交互信息.如下图:
 
-![img](clip_image004.png)
+![](img/clip_image004.png)
 
 消息服务broker URL地址 : tcp : // localhost : 61616
 
@@ -52,7 +52,7 @@ JMS即Java消息服务（Java Message Service的简称），是Java EE 的标准
 
 3、消息服务broker
 
-![img](/clip_image005.png)
+![](img//clip_image005.png)
 
 #### 2.2.2 交互模型:
 
@@ -100,7 +100,7 @@ TopicSession / Message / Topic / TopicPublisher / TopicSubscriber . 由于基于
 
 ### **2.4 ActiveMQ点对点发送与接收消息示例**
 
-![img](clip_image006.png)
+![](img/clip_image006.png)
 
 #### 2.4.1 简单示例:
 
@@ -278,7 +278,7 @@ e.printStackTrace();
 
 #### 2.4.2Queue与Topic比较
 
-![img](/clip_image008.png)
+![](img//clip_image008.png)
 
 #### 2.4.3拉模式与推模式
 
@@ -340,7 +340,7 @@ activeMQConnectionFactory.setTrustedPackages(list);
 
 消息只有在被确认之后，才认为已经被成功消费，然后消息才会从队列或主题中删除。消息的成功消费通常包含三个阶段：
 
-![img](/clip_image010.png)
+![](img//clip_image010.png)
 
 (1)、客户接收消息；
 
@@ -1208,11 +1208,11 @@ OVER! 是不是发现springboot集成的ActiveMQ更加精巧了?配置文件都�
 
 集群就是将相同的程序、功能，部署在两台或多台服务器上，这些服务器对外提供的功能是完全一样的。通过不断横向扩展增加服务器的方式，以提高服务的能力。
 
-![img](/clip_image011.png)
+![](img//clip_image011.png)
 
 4.1.1 不集群模式
 
-![img](file:///C:/Users/gejt/AppData/Local/Temp/msohtmlclip1/01/clip_image012.png)
+![](img/file:///C:/Users/gejt/AppData/Local/Temp/msohtmlclip1/01/clip_image012.png)
 
 4.1.2 集群模式
 
