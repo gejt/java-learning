@@ -1,142 +1,429 @@
 # Java 基础知识
 
-####  Java 容器都有哪些
+## 1、Java基础语法
 
-Java 容器分为 Collection 和 Map 两大类，其下又有很多子类，如下所示：
+### 数据类型 -四类八种
 
-- Collection
-- List
-  - ArrayList
-  - LinkedList
-  - Vector
-  - Stack
-- Set
-  - HashSet
-  - LinkedHashSet
-  - TreeSet
-- Map
-- HashMap
-  - LinkedHashMap
-- TreeMap
-- ConcurrentHashMap
-- Hashtable
+#### 整数型
 
-#### Collection 和 Collections 有什么区别
+byte short int long
 
-- Collection 是一个集合接口，它提供了对集合对象进行基本操作的通用接口方法，所有集合都是它的子类，比如 List、Set 等。
-- Collections 是一个包装类，包含了很多静态方法，不能被实例化，就像一个工具类，比如提供的排序方法： Collections. sort(list)。
+#### 浮点型
 
-####  List、Set、Map 之间的区别是什么
+float double
 
-List、Set、Map 的区别主要体现在两个方面：元素是否有序、是否允许元素重复。
+#### 字符型
 
-三者之间的区别，如下表：
+char 
 
-![](img/listsetmap.png)
+#### 布尔型
 
-#### HashMap 和 Hashtable 有什么区别
+boolean
 
-- 存储：HashMap 运行 key 和 value 为 null，而 Hashtable 不允许。
-- 线程安全：Hashtable 是线程安全的，而 HashMap 是非线程安全的。
-- 推荐使用：在 Hashtable 的类注释可以看到，Hashtable 是保留类不建议使用，推荐在单线程环境下使用 HashMap 替代，如果需要多线程使用则用 ConcurrentHashMap 替代。
+![](img/java-base-type.png)
 
-#### 如何决定使用 HashMap 还是 TreeMap
+### 基础语法
 
- 对于在 Map 中插入、删除、定位一个元素这类操作，HashMap 是最好的选择，因为相对而言 HashMap 的插入会更快，但如果你要对一个 key 集合进行有序的遍历，那 TreeMap 是更好的选择。 
+![](img/java-base-lan.png)
 
-#### HashMap 的实现原理
+### 运算符
 
- HashMap 基于 Hash 算法实现的，我们通过 put(key,value)存储，get(key)来获取。当传入 key 时，HashMap 会根据 key. hashCode() 计算出 hash 值，根据 hash 值将 value 保存在 bucket 里。当计算出的 hash 值相同时，我们称之为 hash 冲突，HashMap 的做法是用链表和红黑树存储相同 hash 值的 value。当 hash 冲突的个数比较少时，使用链表否则使用红黑树。 
+#### 赋值运算符
 
-#### HashSet 的实现原理
+=
 
- HashSet 是基于 HashMap 实现的，HashSet 底层使用 HashMap 来保存所有元素，因此 HashSet 的实现比较简单，相关 HashSet 的操作，基本上都是直接调用底层 HashMap 的相关方法来完成，HashSet 不允许重复的值 
+`int a=4;`
 
-#### ArrayList 和 LinkedList 的区别
+#### 算数运算符
 
-- 数据结构实现：ArrayList 是动态数组的数据结构实现，而 LinkedList 是双向链表的数据结构实现。
-- 随机访问效率：ArrayList 比 LinkedList 在随机访问的时候效率要高，因为 LinkedList 是线性的数据存储方式，所以需要移动指针从前往后依次查找。
-- 增加和删除效率：在非首尾的增加和删除操作，LinkedList 要比 ArrayList 效率要高，因为 ArrayList 增删操作要影响数组内的其他数据的下标。
+![](img/java-base-cal.png)
 
-#### 如何实现数组和 List 之间的转换
-
-- 数组转 List：使用 Arrays. asList(array) 进行转换。
-- List 转数组：使用 List 自带的 toArray() 方法。
+#### 自增/减运算符
 
 ```
-// list to array
-List<String> list = new ArrayList<String>();
-list. add("王磊");
-list. add("的博客");
-list. toArray();
-// array to list
-String[] array = new String[]{"王磊","的博客"};
-Arrays. asList(array);
+int a = 5;
+b = ++a;
+c = a++;
 ```
 
-#### ArrayList 和 Vector 的区别是什么
+#### 比较运算符
 
-- 线程安全：Vector 使用了 Synchronized 来实现线程同步，是线程安全的，而 ArrayList 是非线程安全的。
-- 性能：ArrayList 在性能方面要优于 Vector。
-- 扩容：ArrayList 和 Vector 都会根据实际的需要动态的调整容量，只不过在 Vector 扩容每次会增加 1 倍，而 ArrayList 只会增加 50%。
+![](img/java-base-comp.png)
 
-#### Array 和 ArrayList 有何区别
+#### 逻辑运算符
 
-- Array 可以存储基本数据类型和对象，ArrayList 只能存储对象。
-- Array 是指定固定大小的，而 ArrayList 大小是自动扩展的。
-- Array 内置方法没有 ArrayList 多，比如 addAll、removeAll、iteration 等方法只有 ArrayList 有
+![](img/java-base-logic1.png)
 
-#### 在 Queue 中 poll()和 remove()有什么区别
+![](img/java-base-logic2.png)
 
-- 相同点：都是返回第一个元素，并在队列中删除返回的对象。
-- 不同点：如果没有元素 poll()会返回 null，而 remove()会直接抛出 NoSuchElementException 异常。
+#### 位运算符
 
-```
-Queue<String> queue = new LinkedList<String>();
-queue. offer("string"); // add
-System. out. println(queue. poll());
-System. out. println(queue. remove());
-System. out. println(queue. size());
-```
+| 操作符 | 名称       | 描述                                                     |
+| ------ | ---------- | -------------------------------------------------------- |
+| &      | 与         | 如果对应位都是1，则结果为1，否则为0                      |
+| \|     | 或         | 如果对应位都是0，则结果为0，否则为1                      |
+| ^      | 异或       | 如果对应位相同，则结果为0，否则为1                       |
+| ~      | 取反       | 对运算符翻转每一位，即0变成1，1变成0                     |
+| <<     | 左移       | 按位左移运算符。左操作数按位左移右操作数指定的位数。     |
+| >>     | 右移       | 按位右移运算符。左操作数按位右移右操作数制定的位数。     |
+| >>>    | 无符号右移 | 按位右移补零操作符。在>>之后，移动的得到的空位以零填充。 |
 
-####  哪些集合类是线程安全的
-
- Vector、Hashtable、Stack 都是线程安全的，而像 HashMap 则是非线程安全的，不过在 JDK 1.5 之后随着 Java. util. concurrent 并发包的出现，它们也有了自己对应的线程安全类，比如 HashMap 对应的线程安全类就是 ConcurrentHashMap。 
-
-#### 迭代器 Iterator 是什么
-
- Iterator 接口提供遍历任何 Collection 的接口。我们可以从一个 Collection 中使用迭代器方法来获取迭代器实例。迭代器取代了 Java 集合框架中的 Enumeration，迭代器允许调用者在迭代过程中移除元素。 
-
-#### Iterator 怎么使用？有什么特点
-
- Iterator 使用代码如下： 
+10进制转二进制的时候，因为二进制数一般分8位、 16位、32位以及64位 表示一个十进制数，所以在转换过程中，最高位会补零。
+计算机中负数使用二进制的补码表示。10进制转2进制的是源码，源码取反是反码，反码加1是补码。
 
 ```
-List<String> list = new ArrayList<>();
-Iterator<String> it = list. iterator();
-while(it. hasNext()){
-  String obj = it. next();
-  System. out. println(obj);
+A = 0011 1100
+B = 0000 1101
+------------------
+A & B = 0000 1100
+A | B = 0011 1101
+A ^ B = 0011 0001
+~ A = 1100 0011
+A << 2 = 1111 0000
+A >> 2 = 1111
+A >>> 2 = 0000 1111
+------------------
+C = 1111 1111	// (补码的-1)
+C >>> 4 = 0000 1111
+```
+
+##### 常用计算和位运算
+
+1、取模运算转化成位运算 (在不产生溢出的情况下)
+
+```
+a % (2^n)
+a & (2^n - 1) 
+```
+
+2、乘法运算转化成位运算 (在不产生溢出的情况下)
+
+```
+a * (2^n)
+a < < n 
+```
+
+3、除法运算转化成位运算 (在不产生溢出的情况下)
+
+```
+a / (2^n) 
+a >> n 
+// 例: 12/8 == 12>>3 
+```
+
+4、 除以2的余数
+
+```
+a % 2 
+a & 1
+```
+
+5、相反数
+
+```
+(~x+1)
+```
+
+6、判断一个数 x 的奇偶性
+
+```
+n&1 == 1 ? "奇数" : "偶数"
+```
+
+7、取int型变量 x 的第k位 (k=0,1,2……sizeof(int))
+
+```
+(x>>k) & 1
+```
+
+8、将int型变量a的第k位清0
+
+```
+x = x &~(1 << k) 
+```
+
+9、整数的平均数
+
+对于两个整数x,y，如果用 (x+y)/2 求平均值，会产生溢出，因为 x+y 可能会大于INT_MAX，但是我们知道它们的平均值是肯定不会溢出的。
+
+```
+int average(int x, int y) {    
+    return (x&y)+((x^y)>>1); 
+} 
+```
+
+10、计算绝对值
+
+```
+int abs( int x ) { 
+    int y ; 
+    y = x >> 31 ; 
+    return (x^y)-y ;        //or: (x+y)^y 
+} 
+```
+
+11、去掉 x 的最后一个1
+
+```
+x = 1100
+x-1 = 1011
+x & (x-1) = 1000
+```
+
+#### 三元运算符
+
+条件表达式？表达式1：表达式2
+
+```
+int a = 1;
+int b = 2;
+int c = a>b?a:b;
+```
+
+## 2、Java执行控制流程
+
+#### 条件语句
+
+##### if……else 条件语句
+
+```
+if(a > b){
+	System.out.println("a>b")
+}else if(a == b){
+	System.out.println("a=b")
+}else{
+	System.out.println("a<b")
 }
 ```
 
- Iterator 的特点是更加安全，因为它可以确保，在当前遍历的集合元素被更改的时候，就会抛出 ConcurrentModificationException 异常。 
-
-####  Iterator 和 ListIterator 有什么区别
-
-- Iterator 可以遍历 Set 和 List 集合，而 ListIterator 只能遍历 List。
-- Iterator 只能单向遍历，而 ListIterator 可以双向遍历（向前/后遍历）。
-- ListIterator 从 Iterator 接口继承，然后添加了一些额外的功能，比如添加一个元素、替换一个元素、获取前面或后面元素的索引位置。
-
-#### 怎么确保一个集合不能被修改
-
- 可以使用 Collections. unmodifiableCollection(Collection c) 方法来创建一个只读集合，这样改变集合的任何操作都会抛出 Java. lang. UnsupportedOperationException 异常。 
+##### switch多分支语句
 
 ```
-List<String> list = new ArrayList<>();
-list. add("x");
-Collection<String> clist = Collections. unmodifiableCollection(list);
-clist. add("y"); // 运行时此行报错
-System. out. println(list. size());
+switch(week){
+	case 1:
+		System.out.println("Monday")
+	break;
+	case 2:
+		System.out.println("Tuesday")
+	break;
+	……
+	default :
+		System.out.println("No else")
+	break;
+}
+```
+
+#### 循环语句
+
+##### while循环语句
+
+```
+int a = 10;
+while(a>5){
+	a--;
+}
+```
+
+##### do …… while循环语句
+
+```
+int b = 10;
+do{
+	b--;
+}while(b==1)
+```
+
+##### for循环语句
+
+```
+for(int i=0;i<10;i++){
+	System.out.println(i)
+}
+```
+
+```
+int array[] = {7,8,9};
+for(int arr:array){
+	System.out.println(arr)
+}
+```
+
+#### 跳转语句
+
+##### break
+
+在for  while  do……while循环语句中，用于强制退出当前循环
+
+```
+for(int i=0;i<10;i++){
+	System.out.println(i)
+	if(i=5){
+		break;
+	}
+}
+```
+
+##### continue
+
+用于执行下一次循环
+
+```
+for(int i=0;i<10;i++){
+	if(i=5){
+		continue;
+	}
+	System.out.println(i)
+}
+```
+
+##### return 
+
+用于从一个方法返回
+
+```
+public String getName(){
+	return "Jone";
+}
+```
+
+## 3、面向对象
+
+### 类
+
+相当于一系列对象的抽象
+
+```
+class Car{
+	//类的属性
+	private String name;
+	private String color;
+	private int price;
+	private Wheel wheel;
+	//默认构造方法
+	public Car(){}
+	//带一个参数的构造方法
+	public Cart(String name){
+		this.name = name;
+	}
+	//带多个参数的构造方法
+	public Cart(String name,String color){
+		this.name = name;
+		this.color = color;
+	}
+	//类的方法
+	public void setName(String name){
+		this.name = name;
+	}
+	public void getName(){
+		return this.name;
+	}
+	//重载的方法
+	public String getCartInfo(String name){
+		return this.name;
+	//重载的方法
+	public int getCartInfo(int price){
+		return this.price;
+	}
+	//重载的方法
+	public Strng getCartInfo(String name,int price){
+		return this.name +":"+this.price;
+	}
+	……
+}
+```
+
+### 创建对象
+
+```
+Car car = new Car();
+```
+
+### 属性和方法
+
+```
+class Car{
+	//类的属性
+	private String name;
+	private String color;
+	private Wheel wheel;
+	//类的方法
+	public void setName(String name){
+		this.name = name;
+	}
+	public void getName(){
+		return this.name;
+	}
+	……
+}
+```
+
+### 构造方法
+
+```
+class Car{
+	private String name;
+	private String color;
+	private Wheel wheel;
+	//默认构造方法
+	public Car(){}
+	//带一个参数的构造方法
+	public Cart(String name){
+		this.name = name;
+	}
+	//带多个参数的构造方法
+	public Cart(String name,String color){
+		this.name = name;
+		this.color = color;
+	}
+	……
+}
+```
+
+### 方法重载
+
+```
+class Car{
+	private String name;
+	private String color;
+	private int price;
+	private Wheel wheel;
+	……
+	//重载的方法
+	public String getCartInfo(String name){
+		return this.name;
+	//重载的方法
+	public int getCartInfo(int price){
+		return this.price;
+	}
+	//重载的方法
+	public Strng getCartInfo(String name,int price){
+		return this.name +":"+this.price;
+	}
+	……
+}
+```
+
+### 方法重写
+
+```
+class Car{
+	private String name;
+	private String color;
+	private int price;
+	private Wheel wheel;
+	
+	public String getCartInfo(String name){
+		return this.name;
+	}
+	
+}
+class MyCar extends Car{
+	//重写的方法
+	@Override
+	public String getCartInfo(String name){
+		return this.name;
+	}
+	
+}
 ```
 
