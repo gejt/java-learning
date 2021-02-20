@@ -1,7 +1,3 @@
----
-typora-root-url: img
----
-
 # ActiveMq
 
 ## **一.背景介绍**
@@ -52,7 +48,7 @@ JMS即Java消息服务（Java Message Service的简称），是Java EE 的标准
 
 3、消息服务broker
 
-![](img//clip_image005.png)
+![](img/clip_image005.png)
 
 #### 2.2.2 交互模型:
 
