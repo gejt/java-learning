@@ -100,10 +100,12 @@ JDK早期，重量级，后来改进锁升级。
 
 ###### 锁升级
 
+JVM 使用了锁升级的优化方式，就是先使用**偏向锁**优先同一线程然后再次获取锁，如果失败，就升级为 **CAS 轻量级锁**，如果失败就会短暂**自旋**，防止线程被系统挂起。最后如果以上都失败就升级为**重量级锁**。
+
 例如：sync(object)
 
 - markword 记录这个线程ID 偏向锁
-- 如果有线程征用 升级为 自旋锁（用户态，CPU自旋）
+- 如果有线程征用升级为CAS轻量级锁, 然后自旋（用户态，CPU自旋）
 - 10后还得不到锁 升级为 重量级锁 - OS 进入等待队列
 
 #### 锁的选择
@@ -1196,3 +1198,195 @@ public native int hashCode();
 - 如果遍历链表时找到了相对应的e,则break直接退出遍历
 - 如果e不为null说明，// existing mapping for key，把e.value = value;
 - 最后在判断++size是否大于threshold，大于则调用resize()，方法扩容
+
+
+
+### ConcurrentHashMap原理
+
+ConcurrentHashMap 底层是基于 `数组 + 链表` 组成的，不过在 jdk1.7 和 1.8 中具体实现稍有不同。
+
+#### JDK1.7ConcurrentHashMap原理
+
+数据结构
+
+![](img/cm1.7.jpg)
+
+如图所示，是由 Segment 数组、HashEntry 组成，和 HashMap 一样，仍然是**数组加链表**。
+
+Segment 是 ConcurrentHashMap 的一个内部类，主要的组成如下：
+
+```
+static final class Segment<K,V> extends ReentrantLock implements Serializable {
+
+    private static final long serialVersionUID = 2249069246763182397L;
+
+    // 和 HashMap 中的 HashEntry 作用一样，真正存放数据的桶
+    transient volatile HashEntry<K,V>[] table;
+
+    transient int count;
+        // 记得快速失败（fail—fast）么？
+    transient int modCount;
+        // 大小
+    transient int threshold;
+        // 负载因子
+    final float loadFactor;
+
+}
+```
+
+HashEntry跟HashMap 中的Node 差不多的，但是不同点是，他使用volatile去修饰了他的数据Value还有下一个节点next。
+
+原理上来说，ConcurrentHashMap 采用了**分段锁**技术，其中 Segment 继承于 ReentrantLock。
+
+ConcurrentHashMap 支持 CurrencyLevel (Segment 数组数量)的线程并发。
+
+每当一个线程占用锁访问一个 Segment 时，不会影响到其他的 Segment。
+
+就是说如果容量大小是16他的并发度就是16，可以同时允许16个线程操作16个Segment而且还是线程安全的。
+
+```
+public V put(K key, V value) {
+    Segment<K,V> s;
+    if (value == null)
+        throw new NullPointerException();//这就是为啥他不可以put null值的原因
+    int hash = hash(key);
+    int j = (hash >>> segmentShift) & segmentMask;
+    if ((s = (Segment<K,V>)UNSAFE.getObject          
+         (segments, (j << SSHIFT) + SBASE)) == null) 
+        s = ensureSegment(j);
+    return s.put(key, hash, value, false);
+}
+```
+
+他先定位到Segment，然后再进行put操作。
+
+看看他的put源代码，你就知道他是怎么做到线程安全的了，关键句子我注释了。
+
+```
+
+final V put(K key, int hash, V value, boolean onlyIfAbsent) {
+          // 将当前 Segment 中的 table 通过 key 的 hashcode 定位到 HashEntry
+            HashEntry<K,V> node = tryLock() ? null :
+                scanAndLockForPut(key, hash, value);
+            V oldValue;
+            try {
+                HashEntry<K,V>[] tab = table;
+                int index = (tab.length - 1) & hash;
+                HashEntry<K,V> first = entryAt(tab, index);
+                for (HashEntry<K,V> e = first;;) {
+                    if (e != null) {
+                        K k;
+ // 遍历该 HashEntry，如果不为空则判断传入的 key 和当前遍历的 key 是否相等，相等则覆盖旧的 value。
+                        if ((k = e.key) == key ||
+                            (e.hash == hash && key.equals(k))) {
+                            oldValue = e.value;
+                            if (!onlyIfAbsent) {
+                                e.value = value;
+                                ++modCount;
+                            }
+                            break;
+                        }
+                        e = e.next;
+                    }
+                    else {
+                 // 不为空则需要新建一个 HashEntry 并加入到 Segment 中，同时会先判断是否需要扩容。
+                        if (node != null)
+                            node.setNext(first);
+                        else
+                            node = new HashEntry<K,V>(hash, key, value, first);
+                        int c = count + 1;
+                        if (c > threshold && tab.length < MAXIMUM_CAPACITY)
+                            rehash(node);
+                        else
+                            setEntryAt(tab, index, node);
+                        ++modCount;
+                        count = c;
+                        oldValue = null;
+                        break;
+                    }
+                }
+            } finally {
+               //释放锁
+                unlock();
+            }
+            return oldValue;
+        }
+```
+
+首先第一步的时候会尝试获取锁，如果获取失败肯定就有其他线程存在竞争，则利用 `scanAndLockForPut()` 自旋获取锁。
+
+1. 尝试自旋获取锁。
+2. 如果重试的次数达到了 `MAX_SCAN_RETRIES` 则改为阻塞锁获取，保证能获取成功。
+
+获取锁成功才能继续往下进行put操作。
+
+get 逻辑比较简单，只需要将 Key 通过 Hash 之后定位到具体的 Segment ，再通过一次 Hash 定位到具体的元素上。
+
+由于 HashEntry 中的 value 属性是用 volatile 关键词修饰的，保证了内存可见性，所以每次获取时都是最新值。
+
+ConcurrentHashMap 的 get 方法是非常高效的，**因为整个过程都不需要加锁**。
+
+#### JDK1.8ConcurrentHashMap原理
+
+其中抛弃了原有的 Segment 分段锁，而采用了 `CAS + synchronized` 来保证并发安全性。
+
+跟HashMap很像，也把之前的HashEntry改成了Node，但是作用不变，把值和next采用了volatile去修饰，保证了可见性，并且也引入了红黑树，在链表大于一定值的时候会转换（默认是8）。
+
+ConcurrentHashMap在进行put操作的还是比较复杂的，大致可以分为以下步骤：
+
+- 根据 key 计算出 hashcode 。
+
+- 判断是否需要进行初始化。
+
+- 即为当前 key 定位出的 Node，如果为空表示当前位置可以写入数据，利用 CAS 尝试写入，失败则自旋保证成功。
+
+- 如果当前位置的 `hashcode == MOVED == -1`,则需要进行扩容。
+
+- 如果都不满足即该位置有元素，则利用 synchronized 锁写入数据。（key是否相等，替换value,或者加入链表或者加入TreeBin）
+
+- 如果数量大于 `TREEIFY_THRESHOLD` 则要转换为红黑树。
+
+
+
+ConcurrentHashMap的get操作
+
+- 根据计算出来的 hashcode 寻址，如果就在桶上那么直接返回值。
+- 如果是红黑树那就按照树的方式获取值。
+- 就不满足那就按照链表的方式遍历获取值。
+
+
+
+CAS性能很高，但是我知道synchronized性能可不咋地，为啥jdk1.8升级之后反而多了synchronized？
+
+synchronized之前一直都是重量级的锁，但是后来java官方是对他进行过升级的，他现在采用的是锁升级的方式去做的。
+
+针对 synchronized 获取锁的方式，JVM 使用了锁升级的优化方式，就是先使用**偏向锁**优先同一线程然后再次获取锁，如果失败，就升级为 **CAS 轻量级锁**，如果失败就会短暂**自旋**，防止线程被系统挂起。最后如果以上都失败就升级为**重量级锁**。
+
+所以是一步步升级上去的，最初也是通过很多轻量级的方式锁定的。
+
+
+
+### **快速失败**
+
+**（fail—fast）**是java集合中的一种机制， 在用迭代器遍历一个集合对象时，如果遍历过程中对集合对象的内容进行了修改（增加、删除、修改），则会抛出Concurrent Modification Exception。
+
+>  他的原理是啥？
+>  
+
+迭代器在遍历时直接访问集合中的内容，并且在遍历过程中使用一个 modCount 变量。
+
+集合在被遍历期间如果内容发生变化，就会改变modCount的值。
+
+每当迭代器使用hashNext()/next()遍历下一个元素之前，都会检测modCount变量是否为expectedmodCount值，是的话就返回遍历；否则抛出异常，终止遍历。
+
+**Tip**：这里异常的抛出条件是检测到 modCount！=expectedmodCount 这个条件。如果集合发生变化时修改modCount值刚好又设置为了expectedmodCount值，则异常不会抛出。
+
+因此，不能依赖于这个异常是否抛出而进行并发操作的编程，这个异常只建议用于检测并发修改的bug。
+
+### 安全失败
+
+**（fail-safe）**采用安全失败机制的集合容器，在遍历时不是直接在集合内容上访问的，而是先复制原有集合内容，在拷贝的集合上进行遍历。
+
+由于迭代时是对原集合的拷贝进行遍历，所以在遍历过程中对原集合所作的修改并不能被迭代器检测到，故不会抛 ConcurrentModificationException 异常
+
+快速失败和安全失败是对迭代器而言的。并发环境下建议使用 java.util.concurrent 包下的容器类，除非没有修改操作。
