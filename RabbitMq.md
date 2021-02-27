@@ -120,6 +120,8 @@ docker.io/rabbitmq   3-management        800294d91e31        5 weeks ago        
 
 在Spring Boot中整合RabbitMQ是一件非常容易的事，因为之前我们已经介绍过Starter POMs，其中的AMQP模块就可以很好的支持RabbitMQ，下面我们就来详细说说整合过程：
 
+>  Spring-boot集成RabbitMq https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html#boot-features-amqp
+
 ### 1、POM依赖
 
 在pom.xml中引入如下依赖内容，其中spring-boot-starter-amqp用于支持RabbitMQ。
