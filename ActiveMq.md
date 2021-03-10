@@ -1208,7 +1208,7 @@ OVER! 是不是发现springboot集成的ActiveMQ更加精巧了?配置文件都�
 
 4.1.1 不集群模式
 
-![](img/file:///C:/Users/gejt/AppData/Local/Temp/msohtmlclip1/01/clip_image012.png)
+![](img/clip_image012.png)
 
 4.1.2 集群模式
 
