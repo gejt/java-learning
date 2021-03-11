@@ -213,23 +213,38 @@ spring.rabbitmq.virtual-host=/
 
 **注意：vhost的配置，RabbitMq会有一个默认的vhost：`/`,不配置vhost,是收不到消息的。**
 
-### 3、Direct Exchanger
+### 3、Direct Exchange
 
 多个listener会负载均衡的方式消费消息，每个消息只被消费一次。
 
-#### 配置
+#### RabbitMq配置消息路由规则
+
+在RabbitMq控制台添加一个direct exchange,默认持久化储存消息，如下图
+
+![image-20210311232306233](img\image-20210311232306233.png)
+
+![image-20210311233916489](img\image-20210311233916489.png)
+
+进入queue界面，新建一个queue队列，如下图：
+
+![image-20210311233437381](img\image-20210311233437381.png)
+
+![image-20210311233744008](img\image-20210311233744008.png)
+
+返回exchange界面，点击新建的exchange进入绑定关系界面添加绑定关系，如下图
+
+![image-20210311233235833](img\image-20210311233235833.png)
+
+绑定关系如下图：
+
+![image-20210311233701030](img\image-20210311233701030.png)
+
+#### SpringBoot的配置类
 
 ```java
-@Configuration
 public class DirectConfig {
-    /**
-     * 创建一个队列 hello
-     * @return
-     */
-    @Bean
-    public Queue helloQueue(){
-        return new Queue("hello");
-    }
+    public final static String exName = "ex.direct.order";
+    public final static String queueName = "queue.direct.order";
 }
 
 ```
@@ -246,16 +261,16 @@ public class DirectController {
     @GetMapping("/direct/send")
     public String send(String msg){
         System.out.println("send :" + msg);
-        amqpTemplate.convertAndSend("hello",msg);
+        amqpTemplate.convertAndSend(DirectConfig.exName,null,msg);
         return "ok";
     }
 
-    @RabbitListener(queues = "hello")
+    @RabbitListener(queues = DirectConfig.queueName)
     public void processA(String msg) {
         System.out.println("Receiver A:" + msg);
     }
 
-    @RabbitListener(queues = "hello")
+    @RabbitListener(queues = DirectConfig.queueName)
     public void processB(String msg) {
         System.out.println("Receiver B:" + msg);
     }
@@ -264,43 +279,52 @@ public class DirectController {
 
 ```
 
-### 4、Topic Exchange
+启动项目，访问几次本地：http://localhost:8080/direct/send?msg=123
 
-topic 是RabbitMQ中最灵活的一种方式，可以根据routing_key自由的绑定不同的队列。 首先对topic规则配置，这里使用两个队列来测试
-
-#### 配置
+我们看到控制台上打印出消息,消费端以轮询的方式消费消息,如下：
 
 ```
-@Configuration
+send :123
+Receiver A:123
+send :123
+Receiver B:123
+send :123
+Receiver A:123
+send :123
+Receiver B:123
+```
+
+
+
+### 4、Topic Exchange
+
+topic 是RabbitMQ中最灵活的一种方式，可以根据routing_key自由的绑定不同的队列。 
+
+#### RabbitMq配置消息路由规则
+
+首先对topic规则配置，添加一个topic类型的exchage,如下图：
+
+![image-20210311235544802](img\image-20210311235544802.png)
+
+添加两个消息队列queue如下图：
+
+![image-20210312000029951](img\image-20210312000029951.png)
+
+为exchage 和queue建立绑定关系，如下图：
+
+![image-20210312003055734](img\image-20210312003055734.png)
+
+order1 的队列只接收fruit类型的消息，order2的队列接收所有order类型的消息。
+
+#### SpringBoot的配置类
+
+```
 public class TopicConfig {
 
-    private static  final  String message = "topic.message";
-    private static  final  String messages = "topic.messages";
+    public static  final  String exName = "ex.topic.order";
+    public static  final  String queueOrder1 = "queue.topic.order1";
+    public static  final  String queueOrder2 = "queue.topic.order2";
 
-    @Bean
-    public Queue queueMessage(){
-        return new Queue(message);
-    }
-
-    @Bean
-    public Queue queueMessages(){
-        return new Queue(messages);
-    }
-
-    @Bean
-    public TopicExchange exchange(){
-        return new TopicExchange("myTopicExchange");
-    }
-
-    @Bean
-    public Binding bindingExchangeMessage(Queue queueMessage,TopicExchange topicExchange){
-        return BindingBuilder.bind(queueMessage).to(topicExchange).with(message);
-    }
-
-    @Bean
-    public Binding bindingExchangeMessages(Queue queueMessages,TopicExchange topicExchange){
-        return BindingBuilder.bind(queueMessages).to(topicExchange).with(messages);
-    }
 }
 
 ```
@@ -316,27 +340,53 @@ public class TopicController {
     @Resource
     private AmqpTemplate amqpTemplate;
 
-    @GetMapping("/topic/send")
-    public String send(String msg){
-        amqpTemplate.convertAndSend("myTopicExchange","topic.1","MSG All " + msg);
-        amqpTemplate.convertAndSend("myTopicExchange","topic.message","MSG 1 " + msg);
-        amqpTemplate.convertAndSend("myTopicExchange","topic.messages","MSG 2 " + msg);
+    @GetMapping("/topic/send/fruit")
+    public String sendFruit(String msg){
+        System.out.println("send fruit order msg:"+msg);
+        amqpTemplate.convertAndSend(TopicConfig.exName,"order.fruit."+msg,msg);
         return "ok";
     }
 
-    @RabbitListener(queues = "topic.message")
-    public void process1(String msg){
-        System.out.println("topic.message "+ msg);
+    @GetMapping("/topic/send/other")
+    public String sendOther(String msg){
+        System.out.println("send other order msg:"+msg);
+        amqpTemplate.convertAndSend(TopicConfig.exName,"order.other."+msg,msg);
+        return "ok";
     }
 
-    @RabbitListener(queues = "topic.messages")
+    @RabbitListener(queues = TopicConfig.queueOrder1)
+    public void process1(String msg){
+        System.out.println("Receiver fruit msg:"+ msg);
+    }
+
+    @RabbitListener(queues = TopicConfig.queueOrder2)
     public void process2(String msg){
-        System.out.println("topic.messages "+ msg);
+        System.out.println("Receiver other msg:"+ msg);
     }
 
 }
 
 ```
+
+
+
+启动项目，分别访问如下地址：
+
+http://localhost:8080/topic/send/fruit?msg=apple
+
+http://localhost:8080/topic/send/other?msg=nick
+
+得到如下结果
+
+```
+send fruit order msg:apple
+Receiver other msg:apple
+Receiver fruit msg:apple
+send other order msg:nick
+Receiver other msg:nick
+```
+
+我们看到控制台上打印出消息,消费队列order1值消费fruit的消息，消费队列order2消费了所有的消息。
 
 
 
@@ -344,54 +394,36 @@ public class TopicController {
 
 Fanout 就是我们熟悉的广播模式或者订阅模式，给Fanout交换机发送消息，绑定了这个交换机的所有队列都收到这个消息。
 
-#### 配置
+#### RabbitMq配置消息路由规则
+
+新建一个fanout类型的exchange,如下图：
+
+![image-20210312003532700](img\image-20210312003532700.png)
+
+新建三个消费队列order1,order2,order3,如下图：
+
+![image-20210312003733601](img\image-20210312003733601.png)
+
+为exchange和消费队列queue建立绑定关系，如下图：
+
+![image-20210312003924709](img\image-20210312003924709.png)
+
+#### SpringBoot的配置类
 
 ```
-@Configuration
 public class FanoutConfig {
 
-    @Bean
-    public Queue aMessage() {
-        return new Queue("fanout.a");
-    }
+    public static  final  String exName = "ex.fanout.order";
+    public static  final  String queueOrder1 = "queue.fanout.order1";
+    public static  final  String queueOrder2 = "queue.fanout.order2";
+    public static  final  String queueOrder3 = "queue.fanout.order3";
 
-    @Bean
-    public Queue bMessage() {
-        return new Queue("fanout.b");
-    }
-
-    @Bean
-    public Queue cMessage() {
-        return new Queue("fanout.c");
-    }
-
-    @Bean
-    public FanoutExchange myFanoutExchanger() {
-        return new FanoutExchange("myFanoutExchanger");
-    }
-
-    @Bean
-    public Binding bindingExchangeA(Queue aMessage, FanoutExchange myFanoutExchanger) {
-        return BindingBuilder.bind(aMessage).to(myFanoutExchanger);
-    }
-
-    @Bean
-    public Binding bindingExchangeB(Queue bMessage, FanoutExchange myFanoutExchanger) {
-        return BindingBuilder.bind(bMessage).to(myFanoutExchanger);
-    }
-
-    @Bean
-    public Binding bindingExchangeC(Queue cMessage, FanoutExchange myFanoutExchanger) {
-        return BindingBuilder.bind(cMessage).to(myFanoutExchanger);
-    }
 }
 ```
 
 
 
 #### 发送和接收消息
-
-
 
 ```
 @RestController
@@ -402,28 +434,55 @@ public class FanoutController {
 
     @GetMapping("/fanout/send")
     public String send(String msg) {
-        amqpTemplate.convertAndSend("myFanoutExchanger", "", msg);
+        long time = System.currentTimeMillis();
+        System.out.println("send fanout msg:"+msg+" at time:"+time);
+        amqpTemplate.convertAndSend(FanoutConfig.exName, null, msg+" at time:"+time);
         return "ok";
     }
 
-    @RabbitListener(queues = "fanout.a")
+    @RabbitListener(queues = FanoutConfig.queueOrder1)
     public void processA(String message) {
-        System.out.println("processA " + message);
+        System.out.println("Receiver queue order1 msg: " + message);
     }
 
-    @RabbitListener(queues = "fanout.b")
+    @RabbitListener(queues = FanoutConfig.queueOrder2)
     public void processB(String message) {
-        System.out.println("processB " + message);
+        System.out.println("Receiver queue order2 msg: " + message);
     }
 
-    @RabbitListener(queues = "fanout.c")
+    @RabbitListener(queues = FanoutConfig.queueOrder3)
     public void processC(String message) {
-        System.out.println("processC " + message);
+        System.out.println("Receiver queue order2 msg: " + message);
     }
 
 }
 
 ```
+
+
+
+启动项目，访问如下地址：
+
+http://localhost:8080/fanout/send?msg=nick
+
+```
+send fanout msg:nick at time:1615481221619
+Receiver queue order2 msg: nick at time:1615481221619
+Receiver queue order2 msg: nick at time:1615481221619
+Receiver queue order1 msg: nick at time:1615481221619
+send fanout msg:nick at time:1615481233865
+Receiver queue order1 msg: nick at time:1615481233865
+Receiver queue order2 msg: nick at time:1615481233865
+Receiver queue order2 msg: nick at time:1615481233865
+```
+
+我们看到所有的消费队列都收到了消息。
+
+
+
+以上案例关于消息路由的配置都是在RabbitMq控制台完成，当然我们也可以在程序中完成消息路由的配置，参考如下：
+
+https://blog.csdn.net/zhenghuishengq/article/details/114003957?ops_request_misc=&request_id=&biz_id=102&utm_term=rabbit%20mq&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduweb~default-6-114003957.pc_search_result_hbase_insert
 
 
 
