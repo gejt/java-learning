@@ -211,7 +211,7 @@ spring.rabbitmq.password=guest
 spring.rabbitmq.virtual-host=/
 ```
 
-**注意：vhost的配置，RabbitMq会有一个默认的vhost：`/`,不配置vhost,是收不到消息的。**
+**注意：vhost的配置，RabbitMq会有一个默认的vhost：`/`,不配置对应的vhost,是收不到消息的。**
 
 ### 3、Direct Exchange
 
@@ -486,19 +486,67 @@ https://blog.csdn.net/zhenghuishengq/article/details/114003957?ops_request_misc=
 
 
 
-### 6、RPC？
+### 6、在程序中声明exchage和queue
 
-### 7、延时队列？
+```
+@RestController
+public class DeclareController {
 
-### 8、事务？
+    @Resource
+    AmqpTemplate amqpTemplate;
 
+    @GetMapping("/declare/send")
+    public Object send(String msg){
+        System.out.println("Declare send msg:"+msg);
+        amqpTemplate.convertAndSend("ex.declare.order","",msg);
+        return "ok";
+    }
 
+    @RabbitListener(bindings = @QueueBinding(value = @Queue("queue.declare.order")
+                ,exchange = @Exchange(name = "ex.declare.order",type="direct"))
+    )
+    public void receiveMessage(String msg){
+        System.out.println("Receiver direct:" + msg);
+    }
+}
+```
+
+启动项目，我们可以在Rabbit控制台中自动创建了 对应的持久化的exchange和queue,如下图：
+
+![image-20210312093625629](img\image-20210312093625629.png)
+
+![image-20210312093652379](D:\my\workspace\java-learning\img\image-20210312093652379.png)
+
+访问如下地址：
+
+http://localhost:8080/declare/send?msg=nick
+
+消息发送和消费情况如下：
+
+```
+Declare send msg:nick
+Receiver direct:nick
+```
 
 ## 参考资料
 
 https://www.cnblogs.com/sgh1023/p/11217017.html
 
 https://www.jianshu.com/p/c85ac0063dbf
+
+# 延时队列？
+
+# RPC？
+
+# 消息安全不丢失?
+
+## 事务
+
+## 手动comfirm
+
+## 手动ack
+
+
 
 # RabbitMq核心概念和原理
 
