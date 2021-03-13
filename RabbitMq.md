@@ -515,7 +515,7 @@ public class DeclareController {
 
 ![image-20210313091820471](img\image-20210313091820471.png)
 
-![image-20210312093652379](D:\my\workspace\java-learning\img\image-20210312093652379.png)
+![image-20210312093652379](img\image-20210312093652379.png)
 
 访问如下地址：
 
