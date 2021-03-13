@@ -302,7 +302,7 @@ topic 是RabbitMQ中最灵活的一种方式，可以根据routing_key自由的�
 
 #### RabbitMq配置消息路由规则
 
-首先对topic规则配置，添加一个topic类型的exchage,如下图：
+首先对exchange进行配置，添加一个topic类型的exchage,如下图：
 
 ![image-20210311235544802](img\image-20210311235544802.png)
 
@@ -314,11 +314,11 @@ topic 是RabbitMQ中最灵活的一种方式，可以根据routing_key自由的�
 
 ![image-20210312003055734](img\image-20210312003055734.png)
 
-order1 的队列只接收fruit类型的消息，order2的队列接收所有order类型的消息。
+其中，我们期望order1 的队列只接收fruit类型的消息，order2的队列接收所有order类型的消息。
 
 #### SpringBoot的配置类
 
-```
+```java
 public class TopicConfig {
 
     public static  final  String exName = "ex.topic.order";
@@ -333,7 +333,7 @@ public class TopicConfig {
 
 #### 发送和接收消息
 
-```
+```java
 @RestController
 public class TopicController {
 
@@ -378,7 +378,7 @@ http://localhost:8080/topic/send/other?msg=nick
 
 得到如下结果
 
-```
+```java
 send fruit order msg:apple
 Receiver other msg:apple
 Receiver fruit msg:apple
@@ -480,13 +480,11 @@ Receiver queue order2 msg: nick at time:1615481233865
 
 
 
+### 6、在程序中声明exchage和queue
+
 以上案例关于消息路由的配置都是在RabbitMq控制台完成，当然我们也可以在程序中完成消息路由的配置，参考如下：
 
 https://blog.csdn.net/zhenghuishengq/article/details/114003957?ops_request_misc=&request_id=&biz_id=102&utm_term=rabbit%20mq&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduweb~default-6-114003957.pc_search_result_hbase_insert
-
-
-
-### 6、在程序中声明exchage和queue
 
 ```
 @RestController
@@ -511,9 +509,11 @@ public class DeclareController {
 }
 ```
 
-启动项目，我们可以在Rabbit控制台中自动创建了 对应的持久化的exchange和queue,如下图：
+启动项目，我们可以在Rabbit控制台中看到自动创建了 对应的持久化的exchange和queue,如下图：
 
 ![image-20210312093625629](img\image-20210312093625629.png)
+
+![image-20210313091820471](img\image-20210313091820471.png)
 
 ![image-20210312093652379](D:\my\workspace\java-learning\img\image-20210312093652379.png)
 
